@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:17
+    restart: always
+    env_file: .env
+    # No host port exposure — only accessible within the Docker network
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - odoo_internal
+
+  odoo:
+    image: odoo:latest
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+      - "8072:8072"  # longpolling (live chat / bus)
+    environment:
+      HOST: ${ODOO_HOST}
+      PORT: ${ODOO_PORT}
+      USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - ./addons:/mnt/extra-addons
+      - ./odoo.conf:/etc/odoo/odoo.conf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 16g
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - odoo_internal
+
+volumes:
+  db_data:
+  odoo_data:
+
+networks:
+  odoo_internal:
+    driver: bridge
