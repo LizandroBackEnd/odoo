@@ -24,14 +24,13 @@ services:
       - odoo_internal
 
   odoo:
+    container_name: odoo-app
     image: odoo:latest
     restart: always
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "8069:8069"
-      - "8072:8072"  # longpolling (live chat / bus)
+    command: -d ${POSTGRES_DB} -i base
     environment:
       HOST: ${ODOO_HOST}
       PORT: ${ODOO_PORT}
@@ -52,6 +51,7 @@ services:
         max-file: "5"
     networks:
       - odoo_internal
+      - ngnix_default
 
 volumes:
   db_data:
@@ -60,3 +60,5 @@ volumes:
 networks:
   odoo_internal:
     driver: bridge
+  ngnix_default:
+    external: true
